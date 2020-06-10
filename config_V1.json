@@ -1,0 +1,4 @@
+{
+    "RefGenome_FA_PATH" : "/n/data1/hms/dbmi/farhat/mm774/References/GCF_000195955.2_ASM19595v2_genomic.fasta",
+    "RefGenome_GFF_PATH" : "/n/data1/hms/dbmi/farhat/mm774/Snakemake_Pipelines/PacmanPipe_DevRepo/references/DnaA_MTb_H37Rv_gene_v3.fasta",
+}

@@ -1,0 +1,42 @@
+{
+    "__default__" :
+    {
+        "t" : "0-00:30:0",
+        "n" : 1,
+        "c" : 1,
+        "p" : "short",
+        "mem" : "5G",
+        "o" : "O2logs/cluster/{rule}.{wildcards}.out",
+        "e" : "O2logs/cluster/{rule}.{wildcards}.out"
+    },
+    "nanoplot_QC" :
+    {
+        "t" : "0-00:45:0",
+        "n" : 4,
+        "p" : "short",
+        "mem" : "4G",
+    },
+    "trimmomatic_Illumina_PE_Trimming" :
+    {
+        "t" : "0-01:00:0",
+        "n" : 8,
+        "p" : "short",
+        "mem" : "4G",
+    },
+    "bwa_map_IllPE_AlignTo_H37rv" :
+    {
+        "t" : "0-01:00:0",
+        "n" : 8,
+        "p" : "short",
+        "mem" : "8G",
+    },
+    "samtools_index_IllPE_AlignTo_H37rv" :
+    {
+        "t" : "0-00:05:0",
+        "n" : 1,
+        "p" : "short",
+        "mem" : "1G",
+    },
+}
+
+
