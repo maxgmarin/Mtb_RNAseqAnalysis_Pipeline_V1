@@ -67,7 +67,20 @@ Mtb_RNAseq_SM_Dir="${Farhat_Lab_Dir}/mm774/Snakemake_Pipelines/Mtb_RNAseqAnalysi
 cd ${Mtb_RNAseq_SM_Dir}
 conda activate subread_featurecounts_2_0_1
 
-conda env export > subread_featurecounts_2_0_1_Conda.yml
+conda env export > envs/subread_featurecounts_2_0_1_Conda.yml
+
+
+
+
+
+# Let's create an environment for SRA-Tools
+
+
+conda create -c bioconda -n sratools_2_10_7 sra-tools=2.10.7
+
+conda activate sratools_2_10_7
+
+conda env export > envs/sratools_2_10_7_Conda.yml
 
 
 
@@ -77,9 +90,25 @@ conda env export > subread_featurecounts_2_0_1_Conda.yml
 
 
 
-# Running on O2 (on the lineage 8 Mtb isolate)
 
-# ssh mm774@login01.o2.rc.hms.harvard.edu (And then open a SCREEN)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Running on O2 (on the 1 RNAseq dataset of Mtb isolate, PRJNA508198)
+
+# ssh mm774@login05.o2.rc.hms.harvard.edu (And then open a SCREEN)
 # srun -p medium --pty -n 1 --mem 2G -t 1-23:59 /bin/bash
 
 # srun -p short --pty -n 1 --mem 2G -t 0-11:59 /bin/bash
@@ -87,16 +116,15 @@ conda env export > subread_featurecounts_2_0_1_Conda.yml
 
 Farhat_Lab_Dir="/n/data1/hms/dbmi/farhat"
 
-
 Mtb_RNAseq_SM_Dir="${Farhat_Lab_Dir}/mm774/Snakemake_Pipelines/Mtb_RNAseqAnalysis_Pipeline_V1"
 
-
-inputConfigFile="${Mtb_RNAseq_SM_Dir}/config_PMP_V6.json"
-
-input_SampleInfo_TSV="${Mtb_RNAseq_SM_Dir}/runInfo/PRJNA508198_SraRunTable.csv"
+cd ${Mtb_RNAseq_SM_Dir}
 
 
 
+inputConfigFile="${Mtb_RNAseq_SM_Dir}/config_V1.json"
+
+input_SampleInfo_TSV="${Mtb_RNAseq_SM_Dir}/runInfo_TSVs/PRJNA508198_SraRunTable.csv"
 
 targetOutput_Dir="${Farhat_Lab_Dir}/mm774/Projects/Mtb_RNAseq_Analysis/Mtb_RNAseqAnalysis_Pipeline_Outputs/200610_MtbRNAseq_SM_PRJNA508198_TestRun_V1_Output"
 
@@ -104,17 +132,15 @@ mkdir -p ${targetOutput_Dir}
 
 
 
-
-
-
-
-
 cd ${Mtb_RNAseq_SM_Dir}
 
+# Run a dry run of the pipeline
 snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -np 
 
 
-snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -np --dag --use-conda | dot -Tsvg > DAGs/TestRunV7_Lin8Sample_WiFlye_dag.svg
+
+# Output DAG of jobs
+snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -np --dag --use-conda | dot -Tsvg > DAGs/TestRunV1__dag.svg
 
 
 
@@ -122,13 +148,143 @@ snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSa
 
 mkdir -p ${targetOutput_Dir}/O2logs/cluster/
 
-snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -p --use-conda -j 400 --cluster-config clusterConfig_PMP_V5.json --cluster "sbatch -p {cluster.p} -n {cluster.n}  -t {cluster.t} --mem {cluster.mem} -o ${targetOutput_Dir}/{cluster.o} -e ${targetOutput_Dir}/{cluster.e}" --latency-wait 20 -k 
+snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -p --use-conda -j 400 --cluster-config clusterConfig_V1.json --cluster "sbatch -p {cluster.p} -n {cluster.n}  -t {cluster.t} --mem {cluster.mem} -o ${targetOutput_Dir}/{cluster.o} -e ${targetOutput_Dir}/{cluster.e}" --latency-wait 50 -k 
+
+
+
+mkdir -p ${targetOutput_Dir}/O2logs/cluster/
+
+snakemake -s Mtb_RNAseq_SM_V1.py -R trimmomatic_Illumina_SE_Trimming --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -p --use-conda -j 400 --cluster-config clusterConfig_V1.json --cluster "sbatch -p {cluster.p} -n {cluster.n}  -t {cluster.t} --mem {cluster.mem} -o ${targetOutput_Dir}/{cluster.o} -e ${targetOutput_Dir}/{cluster.e}" --latency-wait 50 -k 
+
+
+
+
+# Let's try to merge the RNAseq counts for PRJNA508198
+
+cd 
+
+#### BONUS: Merging all FeatureCounts Tables Generated
+
+### Link about merging FeatureCounts Output Tables: https://divingintogeneticsandgenomics.rbind.io/post/merge-featurecount-table-from-rnaseq/
+
+### UNIX Solution ###
+
+
+Farhat_Lab_Dir="/n/data1/hms/dbmi/farhat"
+
+targetOutput_Dir="${Farhat_Lab_Dir}/mm774/Projects/Mtb_RNAseq_Analysis/Mtb_RNAseqAnalysis_Pipeline_Outputs/200610_MtbRNAseq_SM_PRJNA508198_TestRun_V1_Output"
+
+cd ${targetOutput_Dir}
+
+srun -p priority --pty -n 1 --mem 4G -t 0-1:59 /bin/bash
+
+
+# Let's try with a single file
+
+
+cd /n/data1/hms/dbmi/farhat/mm774/Projects/Mtb_RNAseq_Analysis/Mtb_RNAseqAnalysis_Pipeline_Outputs/200610_MtbRNAseq_SM_PRJNA508198_TestRun_V1_Output/SRR8274753/IlluminaRNAseq/FeatureCounts
+
+ls -1 SRR8274753.RNAseq.H37rv.ReadCounts.tsv
+
+
+# Let's try with 2 files
+
+
+File1="./SRR8274755/IlluminaRNAseq/FeatureCounts/SRR8274755.RNAseq.H37rv.ReadCounts.tsv"
+File2="./SRR8274758/IlluminaRNAseq/FeatureCounts/SRR8274758.RNAseq.H37rv.ReadCounts.tsv"
+
+
+ls -1 ${File1} ${File2}
+echo ${File1} ${File2}
+
+# get the count for 2 samples
+ls -1   ${File1} ${File2} | parallel 'cat {} | sed '1d' | cut -f7 {} > {/.}_clean.txt' 
+ls -1  ${File1} ${File2} | head -1 | xargs cut -f1 > genes.txt
+paste genes.txt *_clean.txt > output.txt
+
+
+Farhat_Lab_Dir="/n/data1/hms/dbmi/farhat"
+
+targetOutput_Dir="${Farhat_Lab_Dir}/mm774/Projects/Mtb_RNAseq_Analysis/Mtb_RNAseqAnalysis_Pipeline_Outputs/200610_MtbRNAseq_SM_PRJNA508198_TestRun_V1_Output"
+
+cd ${targetOutput_Dir}
+
+
+
+find ./*/IlluminaRNAseq/FeatureCounts/*.RNAseq.H37rv.ReadCounts.tsv
+
+
+mkdir FeatureCountsMergeDir
+
+cd FeatureCountsMergeDir
+
+
+# get the count
+find ../*/IlluminaRNAseq/FeatureCounts/*.RNAseq.H37rv.ReadCounts.tsv | parallel 'cat {} | sed '1d' | cut -f7 {} > {/.}_clean.txt' 
+find ../*/IlluminaRNAseq/FeatureCounts/*.RNAseq.H37rv.ReadCounts.tsv | head -1 | xargs cut -f1 > geneids.txt
+paste geneids.txt *_clean.txt | sed "1d" | sed -i 's/old-text/new-text/g' > FeatureCounts_MergedOutput.tsv
 
 
 
 
 
 
+
+
+
+
+
+
+
+# Running on O2 (on the 1 RNAseq dataset of Mtb isolate, PRJNA508198)
+
+# ssh mm774@login05.o2.rc.hms.harvard.edu (And then open a SCREEN)
+# srun -p medium --pty -n 1 --mem 2G -t 1-23:59 /bin/bash
+
+# srun -p short --pty -n 1 --mem 2G -t 0-11:59 /bin/bash
+
+
+Farhat_Lab_Dir="/n/data1/hms/dbmi/farhat"
+
+Mtb_RNAseq_SM_Dir="${Farhat_Lab_Dir}/mm774/Snakemake_Pipelines/Mtb_RNAseqAnalysis_Pipeline_V1"
+
+cd ${Mtb_RNAseq_SM_Dir}
+
+
+
+inputConfigFile="${Mtb_RNAseq_SM_Dir}/config_V1.json"
+
+input_SampleInfo_TSV="${Mtb_RNAseq_SM_Dir}/runInfo_TSVs/Mtb_RNAseq_MergedSRARunTables_PRJNA421561_PRJNA484003_PRJNA484385_PRJNA484403_PRJNA508198_SraRunTable.csv"
+
+targetOutput_Dir="${Farhat_Lab_Dir}/mm774/Projects/Mtb_RNAseq_Analysis/Mtb_RNAseqAnalysis_Pipeline_Outputs/200611_MtbRNAseq_SM_5_RNAseq_DatasetsMerged_TestRun_V2_Output"
+
+mkdir -p ${targetOutput_Dir}
+
+
+
+cd ${Mtb_RNAseq_SM_Dir}
+
+# Run a dry run of the pipeline
+snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -np 
+
+
+
+# Output DAG of jobs
+snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -np --dag --use-conda | dot -Tsvg > DAGs/TestRunV1__dag.svg
+
+
+
+## Run on O2
+
+mkdir -p ${targetOutput_Dir}/O2logs/cluster/
+
+snakemake -s Mtb_RNAseq_SM_V1.py --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -p --use-conda -j 400 --cluster-config clusterConfig_V1.json --cluster "sbatch -p {cluster.p} -n {cluster.n}  -t {cluster.t} --mem {cluster.mem} -o ${targetOutput_Dir}/{cluster.o} -e ${targetOutput_Dir}/{cluster.e}" --latency-wait 35 -k --rerun-incomplete
+
+
+
+mkdir -p ${targetOutput_Dir}/O2logs/cluster/
+
+snakemake -s Mtb_RNAseq_SM_V1.py -R trimmomatic_Illumina_SE_Trimming --config output_dir=${targetOutput_Dir} inputSampleData_TSV=${input_SampleInfo_TSV} --configfile ${inputConfigFile} -p --use-conda -j 400 --cluster-config clusterConfig_V1.json --cluster "sbatch -p {cluster.p} -n {cluster.n}  -t {cluster.t} --mem {cluster.mem} -o ${targetOutput_Dir}/{cluster.o} -e ${targetOutput_Dir}/{cluster.e}" --latency-wait 50 -k 
 
 
 
